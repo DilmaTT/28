@@ -49,6 +49,9 @@ export const ChartEditor = ({ isMobileMode = false, chart, onBackToCharts, onSav
   const [resizeDirection, setResizeDirection] = useState<string | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
 
+  const MIN_CANVAS_DIMENSION = 100;
+  const MIN_BUTTON_DIMENSION = 5;
+
   // Update chartName, buttons, and canvas dimensions if chart prop changes (e.g., if a different chart is selected)
   useEffect(() => {
     setChartName(chart.name);
@@ -56,6 +59,42 @@ export const ChartEditor = ({ isMobileMode = false, chart, onBackToCharts, onSav
     setCanvasWidth(chart.canvasWidth || 800);
     setCanvasHeight(chart.canvasHeight || 500);
   }, [chart]);
+
+  // Effect to reposition buttons when canvas dimensions change
+  useEffect(() => {
+    setButtons(prevButtons => {
+      let changed = false;
+      const updatedButtons = prevButtons.map(button => {
+        let newX = button.x;
+        let newY = button.y;
+        let newWidth = button.width;
+        let newHeight = button.height;
+
+        // Ensure width/height are at least MIN_BUTTON_DIMENSION
+        newWidth = Math.max(MIN_BUTTON_DIMENSION, newWidth);
+        newHeight = Math.max(MIN_BUTTON_DIMENSION, newHeight);
+
+        // Clamp X and Y to ensure button starts within canvas
+        newX = Math.max(0, Math.min(newX, canvasWidth - newWidth));
+        newY = Math.max(0, Math.min(newY, canvasHeight - newHeight));
+
+        // Clamp width and height to ensure button ends within canvas
+        newWidth = Math.min(newWidth, canvasWidth - newX);
+        newHeight = Math.min(newHeight, canvasHeight - newY);
+
+        if (newX !== button.x || newY !== button.y || newWidth !== button.width || newHeight !== button.height) {
+          changed = true;
+          return { ...button, x: newX, y: newY, width: newWidth, height: newHeight };
+        }
+        return button;
+      });
+
+      if (changed) {
+        return updatedButtons;
+      }
+      return prevButtons; // No change, return original array to prevent unnecessary re-renders
+    });
+  }, [canvasWidth, canvasHeight]);
 
   const handleAddButton = () => {
     const newButton: ChartButton = {
@@ -197,47 +236,45 @@ export const ChartEditor = ({ isMobileMode = false, chart, onBackToCharts, onSav
       let newX = currentButton.x;
       let newY = currentButton.y;
 
-      const minSize = 5; // Minimum button size
-
       switch (resizeDirection) {
         case 'e':
-          newWidth = Math.max(minSize, e.clientX - (currentButton.x + canvasRect.left));
+          newWidth = Math.max(MIN_BUTTON_DIMENSION, e.clientX - (currentButton.x + canvasRect.left));
           break;
         case 's':
-          newHeight = Math.max(minSize, e.clientY - (currentButton.y + canvasRect.top));
+          newHeight = Math.max(MIN_BUTTON_DIMENSION, e.clientY - (currentButton.y + canvasRect.top));
           break;
         case 'w':
           const diffX = e.clientX - (currentButton.x + canvasRect.left);
-          newWidth = Math.max(minSize, currentButton.width - diffX);
+          newWidth = Math.max(MIN_BUTTON_DIMENSION, currentButton.width - diffX);
           newX = currentButton.x + diffX;
           break;
         case 'n':
           const diffY = e.clientY - (currentButton.y + canvasRect.top);
-          newHeight = Math.max(minSize, currentButton.height - diffY);
+          newHeight = Math.max(MIN_BUTTON_DIMENSION, currentButton.height - diffY);
           newY = currentButton.y + diffY;
           break;
         case 'se':
-          newWidth = Math.max(minSize, e.clientX - (currentButton.x + canvasRect.left));
-          newHeight = Math.max(minSize, e.clientY - (currentButton.y + canvasRect.top));
+          newWidth = Math.max(MIN_BUTTON_DIMENSION, e.clientX - (currentButton.x + canvasRect.left));
+          newHeight = Math.max(MIN_BUTTON_DIMENSION, e.clientY - (currentButton.y + canvasRect.top));
           break;
         case 'sw':
           const diffX_sw = e.clientX - (currentButton.x + canvasRect.left);
-          newWidth = Math.max(minSize, currentButton.width - diffX_sw);
+          newWidth = Math.max(MIN_BUTTON_DIMENSION, currentButton.width - diffX_sw);
           newX = currentButton.x + diffX_sw;
-          newHeight = Math.max(minSize, e.clientY - (currentButton.y + canvasRect.top));
+          newHeight = Math.max(MIN_BUTTON_DIMENSION, e.clientY - (currentButton.y + canvasRect.top));
           break;
         case 'ne':
-          newWidth = Math.max(minSize, e.clientX - (currentButton.x + canvasRect.left));
+          newWidth = Math.max(MIN_BUTTON_DIMENSION, e.clientX - (currentButton.x + canvasRect.left));
           const diffY_ne = e.clientY - (currentButton.y + canvasRect.top);
-          newHeight = Math.max(minSize, currentButton.height - diffY_ne);
+          newHeight = Math.max(MIN_BUTTON_DIMENSION, currentButton.height - diffY_ne);
           newY = currentButton.y + diffY_ne;
           break;
         case 'nw':
           const diffX_nw = e.clientX - (currentButton.x + canvasRect.left);
-          newWidth = Math.max(minSize, currentButton.width - diffX_nw);
+          newWidth = Math.max(MIN_BUTTON_DIMENSION, currentButton.width - diffX_nw);
           newX = currentButton.x + diffX_nw;
           const diffY_nw = e.clientY - (currentButton.y + canvasRect.top);
-          newHeight = Math.max(minSize, currentButton.height - diffY_nw);
+          newHeight = Math.max(MIN_BUTTON_DIMENSION, currentButton.height - diffY_nw);
           newY = currentButton.y + diffY_nw;
           break;
       }
@@ -255,7 +292,7 @@ export const ChartEditor = ({ isMobileMode = false, chart, onBackToCharts, onSav
         )
       );
     }
-  }, [activeButtonId, isDragging, isResizing, dragOffset, resizeDirection, buttons]);
+  }, [activeButtonId, isDragging, isResizing, dragOffset, resizeDirection, buttons, MIN_BUTTON_DIMENSION]);
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
     if (!activeButtonId || !canvasRef.current) return;
@@ -287,47 +324,45 @@ export const ChartEditor = ({ isMobileMode = false, chart, onBackToCharts, onSav
       let newX = currentButton.x;
       let newY = currentButton.y;
 
-      const minSize = 5; // Minimum button size
-
       switch (resizeDirection) {
         case 'e':
-          newWidth = Math.max(minSize, touch.clientX - (currentButton.x + canvasRect.left));
+          newWidth = Math.max(MIN_BUTTON_DIMENSION, touch.clientX - (currentButton.x + canvasRect.left));
           break;
         case 's':
-          newHeight = Math.max(minSize, touch.clientY - (currentButton.y + canvasRect.top));
+          newHeight = Math.max(MIN_BUTTON_DIMENSION, touch.clientY - (currentButton.y + canvasRect.top));
           break;
         case 'w':
           const diffX = touch.clientX - (currentButton.x + canvasRect.left);
-          newWidth = Math.max(minSize, currentButton.width - diffX);
+          newWidth = Math.max(MIN_BUTTON_DIMENSION, currentButton.width - diffX);
           newX = currentButton.x + diffX;
           break;
         case 'n':
           const diffY = touch.clientY - (currentButton.y + canvasRect.top);
-          newHeight = Math.max(minSize, currentButton.height - diffY);
+          newHeight = Math.max(MIN_BUTTON_DIMENSION, currentButton.height - diffY);
           newY = currentButton.y + diffY;
           break;
         case 'se':
-          newWidth = Math.max(minSize, touch.clientX - (currentButton.x + canvasRect.left));
-          newHeight = Math.max(minSize, touch.clientY - (currentButton.y + canvasRect.top));
+          newWidth = Math.max(MIN_BUTTON_DIMENSION, touch.clientX - (currentButton.x + canvasRect.left));
+          newHeight = Math.max(MIN_BUTTON_DIMENSION, touch.clientY - (currentButton.y + canvasRect.top));
           break;
         case 'sw':
           const diffX_sw = touch.clientX - (currentButton.x + canvasRect.left);
-          newWidth = Math.max(minSize, currentButton.width - diffX_sw);
+          newWidth = Math.max(MIN_BUTTON_DIMENSION, currentButton.width - diffX_sw);
           newX = currentButton.x + diffX_sw;
-          newHeight = Math.max(minSize, touch.clientY - (currentButton.y + canvasRect.top));
+          newHeight = Math.max(MIN_BUTTON_DIMENSION, touch.clientY - (currentButton.y + canvasRect.top));
           break;
         case 'ne':
-          newWidth = Math.max(minSize, touch.clientX - (currentButton.x + canvasRect.left));
+          newWidth = Math.max(MIN_BUTTON_DIMENSION, touch.clientX - (currentButton.x + canvasRect.left));
           const diffY_ne = touch.clientY - (currentButton.y + canvasRect.top);
-          newHeight = Math.max(minSize, currentButton.height - diffY_ne);
+          newHeight = Math.max(MIN_BUTTON_DIMENSION, currentButton.height - diffY_ne);
           newY = currentButton.y + diffY_ne;
           break;
         case 'nw':
           const diffX_nw = touch.clientX - (currentButton.x + canvasRect.left);
-          newWidth = Math.max(minSize, currentButton.width - diffX_nw);
+          newWidth = Math.max(MIN_BUTTON_DIMENSION, currentButton.width - diffX_nw);
           newX = currentButton.x + diffX_nw;
           const diffY_nw = touch.clientY - (currentButton.y + canvasRect.top);
-          newHeight = Math.max(minSize, currentButton.height - diffY_nw);
+          newHeight = Math.max(MIN_BUTTON_DIMENSION, currentButton.height - diffY_nw);
           newY = currentButton.y + diffY_nw;
           break;
       }
@@ -345,7 +380,7 @@ export const ChartEditor = ({ isMobileMode = false, chart, onBackToCharts, onSav
         )
       );
     }
-  }, [activeButtonId, isDragging, isResizing, dragOffset, resizeDirection, buttons]);
+  }, [activeButtonId, isDragging, isResizing, dragOffset, resizeDirection, buttons, MIN_BUTTON_DIMENSION]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
@@ -418,9 +453,8 @@ export const ChartEditor = ({ isMobileMode = false, chart, onBackToCharts, onSav
     currentValue: number,
     setter: React.Dispatch<React.SetStateAction<number>>
   ) => {
-    const minSize = 100;
-    if (isNaN(currentValue) || currentValue < minSize) {
-      setter(minSize);
+    if (isNaN(currentValue) || currentValue < MIN_CANVAS_DIMENSION) {
+      setter(MIN_CANVAS_DIMENSION);
     }
   };
 
@@ -450,7 +484,7 @@ export const ChartEditor = ({ isMobileMode = false, chart, onBackToCharts, onSav
 
     setCanvasWidth(Math.floor(newWidth));
     // Ensure a minimum height
-    setCanvasHeight(Math.floor(newHeight > 100 ? newHeight : 100));
+    setCanvasHeight(Math.floor(newHeight > MIN_CANVAS_DIMENSION ? newHeight : MIN_CANVAS_DIMENSION));
   };
 
   const Controls = (
