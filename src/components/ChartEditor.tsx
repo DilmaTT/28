@@ -469,22 +469,12 @@ export const ChartEditor = ({ isMobileMode = false, chart, onBackToCharts, onSav
   };
 
   const handleMaximizeCanvas = () => {
-    if (!canvasRef.current) return;
-
-    const parentElement = canvasRef.current.parentElement;
-    if (!parentElement) return;
-
-    // Width is the full client width of the container holding the canvas
-    const newWidth = parentElement.clientWidth;
-
-    // Height is the window height minus the space above the canvas and some padding at the bottom
-    const canvasTopOffset = canvasRef.current.getBoundingClientRect().top;
-    const bottomPadding = 24; // Corresponds to p-6 from the main container
-    const newHeight = window.innerHeight - canvasTopOffset - bottomPadding;
-
-    setCanvasWidth(Math.floor(newWidth));
-    // Ensure a minimum height
-    setCanvasHeight(Math.floor(newHeight > MIN_CANVAS_DIMENSION ? newHeight : MIN_CANVAS_DIMENSION));
+    // Set canvas dimensions to the full viewport size.
+    // This will make the canvas as large as the browser window,
+    // which may cause the page to scroll. This is the intended behavior
+    // to provide a maximized editing area.
+    setCanvasWidth(window.innerWidth);
+    setCanvasHeight(window.innerHeight);
   };
 
   const Controls = (
